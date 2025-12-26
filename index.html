@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>样品移动端看板</title>
+<style>
+:root {
+  --bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --border: #e5e5ea;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --accent: #007aff;
+  --in-stock-tint: #e8f4ff;
+  --borrowed-tint: #fff0f0;
+  --apple-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.02);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+/* 搜索栏 - Apple风格 */
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  font-size: 16px;
+  color: var(--text);
+  transition: border-color 0.2s ease;
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* 入库登记栏 */
+.register-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.register-toolbar input {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  flex: 1 1 140px;
+  font-size: 16px;
+  color: var(--text);
+  transition: border-color 0.2s ease;
+}
+.register-toolbar input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.register-toolbar button {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.register-toolbar button:hover {
+  background: #0066cc;
+}
+
+/* 扫码按钮特殊样式（Apple风格图标+文字） */
+.scan-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #34c759; /* Apple绿色，区分普通按钮 */
+}
+.scan-btn:hover {
+  background: #28a745;
+}
+
+/* 扫码弹窗（Apple风格模态框） */
+.scan-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.scan-modal.active {
+  display: flex;
+}
+.scan-content {
+  width: 90%;
+  max-width: 400px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.scan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.scan-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#qr-reader {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+#qr-reader-results {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+/* 看板容器 */
+.board {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* 列（在库/借出）- Apple风格分区 */
+.column {
+  flex: 1;
+  min-width: 300px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--apple-shadow);
+}
+
+.column h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* 核心卡片：左侧信息+右侧按钮 */
+.card {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--apple-shadow);
+  border-left: 4px solid transparent;
+  transition: transform 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+/* 状态色标记（左侧小竖条） */
+.card.in-stock {
+  border-left-color: var(--accent);
+  background: var(--in-stock-tint);
+}
+.card.borrowed {
+  border-left-color: #ff3b30;
+  background: var(--borrowed-tint);
+}
+
+/* 卡片左侧：信息区（占2/3） */
+.card-info {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.card-info strong {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.card-info .meta {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* 卡片右侧：按钮区（占1/3） */
+.card-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-action button {
+  width: 100%;
+  padding: 8px 0;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+/* 按钮状态色 */
+.card-action button.borrow-btn {
+  background: var(--accent);
+  color: white;
+}
+.card-action button.borrow-btn:hover {
+  background: #0066cc;
+}
+.card-action button.return-btn {
+  background: #ff3b30;
+  color: white;
+}
+.card-action button.return-btn:hover {
+  background: #cc2e25;
+}
+
+/* 移动端适配 */
+@media (max-width: 700px) {
+  .board {
+    flex-direction: column;
+  }
+  .register-toolbar input {
+    flex: 1 1 100%;
+  }
+  .register-toolbar button {
+    flex: 1 1 48%;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>样品移动端看板</h1>
+
+  <!-- 搜索栏 -->
+  <div class="search-bar">
+    <input id="search-input" class="search-input" placeholder="搜索样品编号/名称/项目/使用人" oninput="filterSamples()">
+  </div>
+
+  <!-- 入库登记栏（新增扫码按钮） -->
+  <div class="register-toolbar">
+    <input id="sid" placeholder="样品编号">
+    <input id="name" placeholder="样品名称">
+    <input id="project" placeholder="项目">
+    <input id="user_name" placeholder="使用人">
+    <button onclick="submitSample()">入库</button>
+    <!-- 新增扫码按钮 -->
+    <button class="scan-btn" onclick="openScanModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 8V4M4 4H8M4 4L2 2M20 8V4M20 4H16M20 4L22 2M4 20V16M4 20H8M4 20L2 22M20 20V16M20 20H16M20 20L22 22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      扫码入库
+    </button>
+    <button onclick="exportExcel()">导出 Excel</button>
+  </div>
+
+  <!-- 看板 -->
+  <div class="board">
+    <div class="column" id="in-stock-column">
+      <h2>在库</h2>
+    </div>
+    <div class="column" id="borrowed-column">
+      <h2>借出</h2>
+    </div>
+  </div>
+</div>
+
+<!-- 新增：扫码弹窗 -->
+<div class="scan-modal" id="scanModal">
+  <div class="scan-content">
+    <div class="scan-header">
+      <h3>扫码识别样品</h3>
+      <button class="close-btn" onclick="closeScanModal()">×</button>
+    </div>
+    <div id="qr-reader"></div>
+    <div id="qr-reader-results"></div>
+    <button onclick="confirmScan()">确认填充</button>
+  </div>
+</div>
+
+<!-- 依赖库 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<!-- 新增：扫码库 -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+
+<script>
+/* 替换为你的Supabase信息 */
+const SUPABASE_URL = "https://hglbfnfwvhqnpcpelvvl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnbGJmbmZ3dmhxbnBjcGVsdnZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0ODMyNTAsImV4cCI6MjA4MjA1OTI1MH0.QHD-vPqfsIuWWrTFhGmoejrHhkSZkCu0MAsv6OT3WYo";
+
+const { createClient } = supabase;
+const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allSamples = [];
+// 新增：存储扫码结果
+let scanResult = "";
+// 新增：扫码实例
+let html5QrcodeScanner = null;
+
+/* 提交样品 */
+async function submitSample() {
+  const data = {
+    id: document.getElementById("sid").value,
+    name: document.getElementById("name").value,
+    project: document.getElementById("project").value,
+    status: "in_stock",
+    user_name: document.getElementById("user_name").value,
+    updated_at: new Date()
+  };
+
+  const { error } = await client.from("current_samples").upsert(data);
+  if (error) { alert("写入失败：" + error.message); return; }
+  loadSamples();
+  // 清空输入框
+  document.getElementById("sid").value = "";
+  document.getElementById("name").value = "";
+  document.getElementById("project").value = "";
+  document.getElementById("user_name").value = "";
+}
+
+/* 借出 */
+async function borrow(id) {
+  const user = prompt("借给谁？");
+  if (!user) return;
+  await client.from("current_samples")
+    .update({ status: "borrowed", user_name: user, updated_at: new Date() })
+    .eq("id", id);
+  loadSamples();
+}
+
+/* 归还 */
+async function returnSample(id) {
+  await client.from("current_samples")
+    .update({ status: "in_stock", user_name: null, updated_at: new Date() })
+    .eq("id", id);
+  loadSamples();
+}
+
+/* 加载样品 */
+async function loadSamples() {
+  const { data, error } = await client.from("current_samples").select("*").order("updated_at", { ascending: false });
+  if (error) { console.error(error); return; }
+  allSamples = data;
+  filterSamples();
+}
+
+/* 搜索过滤 */
+function filterSamples() {
+  const searchKeyword = document.getElementById("search-input").value.trim().toLowerCase();
+  const filteredData = allSamples.filter(s => {
+    const id = s.id ? s.id.toLowerCase() : "";
+    const name = s.name ? s.name.toLowerCase() : "";
+    const project = s.project ? s.project.toLowerCase() : "";
+    const user = s.user_name ? s.user_name.toLowerCase() : "";
+    return id.includes(searchKeyword) || name.includes(searchKeyword) || project.includes(searchKeyword) || user.includes(searchKeyword);
+  });
+
+  const inStockCol = document.getElementById("in-stock-column");
+  const borrowedCol = document.getElementById("borrowed-column");
+  inStockCol.innerHTML = "<h2>在库</h2>";
+  borrowedCol.innerHTML = "<h2>借出</h2>";
+
+  filteredData.forEach(s => {
+    const card = document.createElement("div");
+    card.className = `card ${s.status === "in_stock" ? "in-stock" : "borrowed"}`;
+    card.dataset.id = s.id;
+    
+    // 左侧信息+右侧按钮布局
+    card.innerHTML = `
+      <div class="card-info">
+        <strong>${s.name || "未命名样品"}</strong>
+        <div class="meta">
+          编号：${s.id || "-"}<br>
+          项目：${s.project || "-"}<br>
+          使用人：${s.user_name || "-"}
+        </div>
+      </div>
+      <div class="card-action">
+        <button class="${s.status === "in_stock" ? "borrow-btn" : "return-btn"}" 
+                onclick="${s.status === "in_stock" ? `borrow('${s.id}')` : `returnSample('${s.id}')`}">
+          ${s.status === "in_stock" ? "借出" : "归还"}
+        </button>
+      </div>
+    `;
+
+    if (s.status === "in_stock") inStockCol.appendChild(card);
+    else borrowedCol.appendChild(card);
+  });
+
+  /* 拖拽功能（保留） */
+  makeSortable("in-stock-column", "borrowed-column");
+  makeSortable("borrowed-column", "in-stock-column");
+}
+
+/* 拖拽函数 */
+function makeSortable(containerId, targetId) {
+  const el = document.getElementById(containerId);
+  if (!el.sortableInstance) {
+    el.sortableInstance = new Sortable(el, {
+      group: "shared",
+      animation: 150,
+      ghostClass: "sortable-ghost",
+      onAdd: async function(evt) {
+        const id = evt.item.dataset.id;
+        if (containerId === "in-stock-column") {
+          await returnSample(id);
+        } else {
+          const user = prompt("借给谁？");
+          if (!user) { loadSamples(); return; }
+          await client.from("current_samples")
+            .update({ status: "borrowed", user_name: user, updated_at: new Date() })
+            .eq("id", id);
+          loadSamples();
+        }
+      }
+    });
+  }
+}
+
+/* 实时刷新 */
+client.channel("samples-realtime")
+  .on("postgres_changes", { event: "*", schema: "public", table: "current_samples" }, payload => {
+    loadSamples();
+  }).subscribe();
+
+/* 导出Excel */
+async function exportExcel() {
+  const { data, error } = await client.from("current_samples").select("*");
+  if (error) { alert("导出失败"); return; }
+  const sheet = XLSX.utils.json_to_sheet(
+    data.map(d => ({
+      样品编号: d.id,
+      样品名称: d.name,
+      项目: d.project,
+      状态: d.status === "in_stock" ? "在库" : "借出",
+      使用人: d.user_name || "",
+      更新时间: new Date(d.updated_at).toLocaleString()
+    }))
+  );
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, sheet, "样品看板");
+  XLSX.writeFile(book, "样品看板.xlsx");
+}
+
+// ===================== 新增：扫码入库核心逻辑 =====================
+/* 打开扫码弹窗 */
+function openScanModal() {
+  const modal = document.getElementById("scanModal");
+  modal.classList.add("active");
+  
+  // 初始化扫码器（Apple风格的扫码框）
+  if (!html5QrcodeScanner) {
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "qr-reader",
+      {
+        fps: 10, // 帧率（平衡性能和识别速度）
+        qrbox: { width: 250, height: 250 }, // 扫码框大小（适配移动端）
+        aspectRatio: 1, // 1:1 正方形扫码框（Apple风格）
+        disableFlip: false // 允许翻转摄像头（前后置）
+      },
+      false
+    );
+  }
+
+  // 启动扫码，解析结果
+  html5QrcodeScanner.render(
+    (decodedText, decodedResult) => {
+      scanResult = decodedText;
+      document.getElementById("qr-reader-results").innerText = `识别到：${decodedText}`;
+    },
+    (errorMessage) => {
+      // 忽略识别中的普通错误（如未识别到码）
+      if (!errorMessage.includes("No QR code found")) {
+        document.getElementById("qr-reader-results").innerText = "识别失败，请重试";
+      }
+    }
+  );
+}
+
+/* 关闭扫码弹窗 */
+function closeScanModal() {
+  const modal = document.getElementById("scanModal");
+  modal.classList.remove("active");
+  
+  // 停止扫码，释放摄像头
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+    scanResult = "";
+    document.getElementById("qr-reader-results").innerText = "";
+  }
+}
+
+/* 确认扫码结果，填充到表单 */
+function confirmScan() {
+  if (!scanResult) {
+    alert("请先扫码识别样品信息");
+    return;
+  }
+
+  // 解析扫码结果（支持两种常见格式）
+  // 格式1：纯编号 → 填充到样品编号框
+  // 格式2：JSON字符串（如 {"id":"S001","name":"样品A","project":"项目1"}）→ 批量填充
+  try {
+    const parsed = JSON.parse(scanResult);
+    if (parsed.id) document.getElementById("sid").value = parsed.id;
+    if (parsed.name) document.getElementById("name").value = parsed.name;
+    if (parsed.project) document.getElementById("project").value = parsed.project;
+  } catch (e) {
+    // 非JSON格式，默认填充到样品编号
+    document.getElementById("sid").value = scanResult;
+  }
+
+  // 关闭弹窗
+  closeScanModal();
+  alert("样品信息已填充，可补充其他信息后点击入库");
+}
+
+/* 初始化 */
+loadSamples();
+</script>
+</body>
+</html>
